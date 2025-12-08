@@ -1,6 +1,36 @@
 // API service for communicating with the backend
 
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api';
+// Support both localhost for development and environment variable for production
+const getApiUrl = () => {
+  const envUrl = (import.meta as any).env?.VITE_API_URL;
+  
+  // If we're in production and have a production URL set, use it
+  if (import.meta.env.PROD && envUrl && envUrl !== 'http://localhost:5000/api') {
+    return envUrl;
+  }
+  
+  // Try localhost first
+  return envUrl || 'http://localhost:5000/api';
+};
+
+let API_BASE_URL = getApiUrl();
+
+// Detect if backend is available
+let backendAvailable = true;
+const checkBackendAvailability = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/health`, { 
+      method: 'GET',
+      mode: 'cors'
+    });
+    backendAvailable = response.ok;
+  } catch (err) {
+    backendAvailable = false;
+  }
+};
+
+// Check backend on app start
+checkBackendAvailability();
 
 class ApiService {
   // Profile APIs
