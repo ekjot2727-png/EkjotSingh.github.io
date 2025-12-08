@@ -34,14 +34,21 @@ export interface ChatMessage {
 }
 
 export interface Doctor {
-  id: string;
+  _id?: string;
+  id?: string;
   name: string;
   specialty: string;
   area: string;
   address: string;
+  city?: string;
   phone: string;
   rating: number;
   distance?: string;
+  experience?: number;
+  education?: string;
+  consultationFee?: number;
+  availability?: string[];
+  services?: string[];
 }
 
 export interface EducationArticle {

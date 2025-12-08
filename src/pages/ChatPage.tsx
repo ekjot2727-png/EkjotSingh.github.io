@@ -3,35 +3,29 @@
 import { useState, useRef, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
-import { Send, Bot, User, MapPin, Loader2 } from 'lucide-react';
+import { Send, Bot, User, Loader2, Phone, MapPin, Star } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Footer } from '@/components/Footer';
-import { findBestResponse, getFallbackResponse, getSampleDoctors } from '@/lib/chatbot-knowledge';
-import { getChatHistory, saveChatHistory } from '@/lib/storage';
+import { api } from '@/lib/api';
+import type { Doctor } from '@/types';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  gynecologists?: Doctor[];
 }
 
 export default function ChatPage() {
-  const [messages, setMessages] = useState<Message[]>(() => {
-    const history = getChatHistory();
-    return history.length > 0 ? history : [
-      { role: 'assistant', content: "Hello! 💕 I'm Luna, your menstrual health assistant. I can help answer questions about periods, hygiene, symptoms, and reproductive health. What would you like to know?" }
-    ];
-  });
+  const [messages, setMessages] = useState<Message[]>([
+    { role: 'assistant', content: "Hello! 💕 I'm Luna, your menstrual health assistant. I can help answer questions about periods, hygiene, symptoms, and reproductive health. I can also help you find gynecologists in Jaipur! What would you like to know?" }
+  ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  useEffect(() => {
-    saveChatHistory(messages);
   }, [messages]);
 
   const handleSend = async () => {
@@ -42,21 +36,33 @@ export default function ChatPage() {
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setIsTyping(true);
 
-    // Simulate typing delay
-    await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 500));
+    try {
+      // Send message to backend
+      const response = await api.sendMessage(userMessage);
 
-    // Check for doctor search
-    if (userMessage.toLowerCase().includes('doctor') || userMessage.toLowerCase().includes('gynecologist') || userMessage.toLowerCase().includes('find')) {
-      const doctors = getSampleDoctors('Jaipur');
-      const response = `I found some gynecologists near you:\n\n${doctors.slice(0, 3).map(d => 
-        `🏥 **${d.name}**\n📍 ${d.area} (${d.distance})\n⭐ ${d.rating}/5\n📞 ${d.phone}`
-      ).join('\n\n')}\n\n*Note: This is demo data. For real results, please use a verified medical directory or Google Maps.*`;
-      
-      setMessages(prev => [...prev, { role: 'assistant', content: response }]);
-    } else {
-      const match = findBestResponse(userMessage);
-      const response = match ? match.response : getFallbackResponse();
-      setMessages(prev => [...prev, { role: 'assistant', content: response }]);
+      // Check if response is for gynecologist search
+      if (response.type === 'gynecologist_search' || response.content === 'gynecologist_search') {
+        // Fetch gynecologists from backend
+        const gynecologists = await api.getGynecologists({ city: 'Jaipur' });
+        
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: `I found ${gynecologists.length} gynecologists in Jaipur for you:`,
+          gynecologists: gynecologists.slice(0, 5) // Show top 5
+        }]);
+      } else {
+        // Regular text response
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: response.content 
+        }]);
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: "I'm sorry, I'm having trouble connecting to the server. Please make sure the backend is running." 
+      }]);
     }
 
     setIsTyping(false);
@@ -91,10 +97,66 @@ export default function ChatPage() {
                       <Bot className="w-4 h-4 text-primary-foreground" />
                     </div>
                   )}
-                  <div className={`max-w-[80%] p-3 rounded-2xl text-sm whitespace-pre-wrap
-                    ${msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-muted rounded-bl-sm'}
-                  `}>
-                    {msg.content}
+                  <div className={`max-w-[80%] ${msg.role === 'user' ? 'text-right' : ''}`}>
+                    <div className={`p-3 rounded-2xl text-sm whitespace-pre-wrap inline-block
+                      ${msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-muted rounded-bl-sm'}
+                    `}>
+                      {msg.content}
+                    </div>
+                    
+                    {/* Gynecologist Results */}
+                    {msg.gynecologists && msg.gynecologists.length > 0 && (
+                      <div className="mt-3 space-y-3">
+                        {msg.gynecologists.map((doctor) => (
+                          <Card key={doctor._id} className="p-4 bg-card">
+                            <div className="flex flex-col gap-2">
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <h3 className="font-semibold text-base">{doctor.name}</h3>
+                                  <p className="text-sm text-muted-foreground">{doctor.specialty}</p>
+                                </div>
+                                <div className="flex items-center gap-1 bg-amber-100 dark:bg-amber-900/30 px-2 py-1 rounded">
+                                  <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                                  <span className="text-sm font-medium">{doctor.rating}</span>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <MapPin className="w-4 h-4" />
+                                <span>{doctor.area}, {doctor.city}</span>
+                              </div>
+                              
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Phone className="w-4 h-4" />
+                                <span>{doctor.phone}</span>
+                              </div>
+
+                              {doctor.experience && (
+                                <p className="text-sm text-muted-foreground">
+                                  Experience: {doctor.experience} years
+                                </p>
+                              )}
+
+                              {doctor.consultationFee && (
+                                <p className="text-sm font-medium text-green-600 dark:text-green-500">
+                                  Consultation Fee: ₹{doctor.consultationFee}
+                                </p>
+                              )}
+
+                              {doctor.services && doctor.services.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {doctor.services.slice(0, 3).map((service, idx) => (
+                                    <span key={idx} className="text-xs bg-muted px-2 py-1 rounded">
+                                      {service}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   {msg.role === 'user' && (
                     <div className="w-8 h-8 rounded-full bg-lavender flex items-center justify-center flex-shrink-0">
