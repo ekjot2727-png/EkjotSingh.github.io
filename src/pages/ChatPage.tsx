@@ -41,20 +41,18 @@ export default function ChatPage() {
       const response = await api.sendMessage(userMessage);
 
       // Check if response is for gynecologist search
-      if (response.type === 'gynecologist_search' || response.content === 'gynecologist_search') {
-        // Fetch gynecologists from backend
-        const gynecologists = await api.getGynecologists({ city: 'Jaipur' });
-        
+      if (response.type === 'gynecologist_search' && response.doctors) {
+        // Use doctors from the response
         setMessages(prev => [...prev, { 
           role: 'assistant', 
-          content: `I found ${gynecologists.length} gynecologists in Jaipur for you:`,
-          gynecologists: gynecologists.slice(0, 5) // Show top 5
+          content: response.content,
+          gynecologists: response.doctors.slice(0, 5) // Show top 5
         }]);
       } else {
         // Regular text response
         setMessages(prev => [...prev, { 
           role: 'assistant', 
-          content: response.content 
+          content: response.content || response 
         }]);
       }
     } catch (error) {

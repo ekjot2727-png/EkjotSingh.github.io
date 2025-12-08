@@ -21,8 +21,15 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Database connection
-mongoose.connect(process.env.MONGODB_URI)
+// Database connection with shorter timeout
+const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/luna-health';
+mongoose.connect(mongoUri, {
+  connectTimeoutMS: 3000,
+  serverSelectionTimeoutMS: 3000,
+  socketTimeoutMS: 3000,
+  retryWrites: false,
+  bufferCommands: false  // Disable command buffering to fail fast
+})
   .then(() => console.log('✅ MongoDB Connected Successfully'))
   .catch(err => {
     console.warn('⚠️  MongoDB Connection Error:', err.message);
@@ -57,7 +64,7 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, '127.0.0.1', () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📡 Environment: ${process.env.NODE_ENV}`);
 });

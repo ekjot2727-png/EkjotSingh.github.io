@@ -179,16 +179,12 @@ export const sendMessage = async (req, res) => {
     const userId = req.body.userId || 'default-user';
     const userMessage = req.body.message;
 
-    // Try to save user message (optional if DB fails)
-    try {
-      await ChatMessage.create({
-        userId,
-        role: 'user',
-        content: userMessage
-      });
-    } catch (dbError) {
-      console.warn('Could not save to database:', dbError.message);
-    }
+    // Save user message asynchronously (don't wait for it)
+    ChatMessage.create({
+      userId,
+      role: 'user',
+      content: userMessage
+    }).catch(err => console.warn('Could not save user message:', err.message));
 
     // Check if asking for gynecologist
     if (userMessage.toLowerCase().includes('doctor') || 
@@ -204,15 +200,12 @@ export const sendMessage = async (req, res) => {
         doctors: jaipurGynecologists.sort((a, b) => b.rating - a.rating).slice(0, 5)
       };
 
-      try {
-        await ChatMessage.create({
-          userId,
-          role: 'assistant',
-          content: 'Searching for gynecologists in Jaipur...'
-        });
-      } catch (dbError) {
-        console.warn('Could not save to database:', dbError.message);
-      }
+      // Save response asynchronously (don't wait for it)
+      ChatMessage.create({
+        userId,
+        role: 'assistant',
+        content: 'Searching for gynecologists in Jaipur...'
+      }).catch(err => console.warn('Could not save assistant message:', err.message));
 
       return res.json(response);
     }
@@ -223,16 +216,12 @@ export const sendMessage = async (req, res) => {
       ? match.response 
       : "I understand you have a question. While I can provide general information about menstrual health, for specific medical concerns, I recommend consulting with a healthcare provider. You can ask me about periods, symptoms, hygiene, or finding a gynecologist!";
 
-    // Try to save assistant response (optional if DB fails)
-    try {
-      await ChatMessage.create({
-        userId,
-        role: 'assistant',
-        content: responseContent
-      });
-    } catch (dbError) {
-      console.warn('Could not save to database:', dbError.message);
-    }
+    // Save response asynchronously (don't wait for it)
+    ChatMessage.create({
+      userId,
+      role: 'assistant',
+      content: responseContent
+    }).catch(err => console.warn('Could not save assistant message:', err.message));
 
     res.json({
       role: 'assistant',
