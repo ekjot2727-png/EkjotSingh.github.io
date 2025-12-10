@@ -1,4 +1,4 @@
-import Gynecologist from '../models/Gynecologist.model.js';
+// Gynecologist data is now hardcoded (no database needed)
 
 // Sample Jaipur gynecologists data
 const sampleGynecologists = [

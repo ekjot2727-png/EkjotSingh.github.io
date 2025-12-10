@@ -1,4 +1,4 @@
-import ChatMessage from '../models/ChatMessage.model.js';
+import * as ChatMessageModel from '../models/supabase/ChatMessage.js';
 
 // Jaipur Gynecologists Database
 const jaipurGynecologists = [
@@ -166,7 +166,7 @@ function findBestResponse(message) {
 export const getChatHistory = async (req, res) => {
   try {
     const userId = req.query.userId || 'default-user';
-    const messages = await ChatMessage.find({ userId }).sort({ timestamp: 1 }).limit(100);
+    const messages = await ChatMessageModel.getChatHistory(userId);
     res.json(messages);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch chat history', message: error.message });
@@ -180,8 +180,8 @@ export const sendMessage = async (req, res) => {
     const userMessage = req.body.message;
 
     // Save user message asynchronously (don't wait for it)
-    ChatMessage.create({
-      userId,
+    ChatMessageModel.createChatMessage({
+      user_id: userId,
       role: 'user',
       content: userMessage
     }).catch(err => console.warn('Could not save user message:', err.message));
@@ -201,8 +201,8 @@ export const sendMessage = async (req, res) => {
       };
 
       // Save response asynchronously (don't wait for it)
-      ChatMessage.create({
-        userId,
+      ChatMessageModel.createChatMessage({
+        user_id: userId,
         role: 'assistant',
         content: 'Searching for gynecologists in Jaipur...'
       }).catch(err => console.warn('Could not save assistant message:', err.message));
@@ -217,8 +217,8 @@ export const sendMessage = async (req, res) => {
       : "I understand you have a question. While I can provide general information about menstrual health, for specific medical concerns, I recommend consulting with a healthcare provider. You can ask me about periods, symptoms, hygiene, or finding a gynecologist!";
 
     // Save response asynchronously (don't wait for it)
-    ChatMessage.create({
-      userId,
+    ChatMessageModel.createChatMessage({
+      user_id: userId,
       role: 'assistant',
       content: responseContent
     }).catch(err => console.warn('Could not save assistant message:', err.message));
@@ -236,7 +236,7 @@ export const sendMessage = async (req, res) => {
 export const clearChatHistory = async (req, res) => {
   try {
     const userId = req.query.userId || 'default-user';
-    await ChatMessage.deleteMany({ userId });
+    await ChatMessageModel.deleteChatHistory(userId);
     res.json({ message: 'Chat history cleared successfully' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to clear chat history', message: error.message });

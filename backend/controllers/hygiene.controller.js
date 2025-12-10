@@ -1,10 +1,10 @@
-import HygieneReminder from '../models/HygieneReminder.model.js';
+import * as HygieneReminderModel from '../models/supabase/HygieneReminder.js';
 
 // Get all hygiene reminders
 export const getReminders = async (req, res) => {
   try {
     const userId = req.query.userId || 'default-user';
-    const reminders = await HygieneReminder.find({ userId });
+    const reminders = await HygieneReminderModel.getHygieneReminders(userId);
     res.json(reminders);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch reminders', message: error.message });
@@ -16,13 +16,14 @@ export const createReminder = async (req, res) => {
   try {
     const userId = req.body.userId || 'default-user';
     const reminderData = {
-      userId,
+      user_id: userId,
       title: req.body.title,
-      interval: req.body.interval,
-      enabled: req.body.enabled !== undefined ? req.body.enabled : true
+      frequency: req.body.interval || req.body.frequency,
+      is_active: req.body.enabled !== undefined ? req.body.enabled : true,
+      description: req.body.description || ''
     };
 
-    const reminder = await HygieneReminder.create(reminderData);
+    const reminder = await HygieneReminderModel.createHygieneReminder(reminderData);
     res.status(201).json(reminder);
   } catch (error) {
     res.status(500).json({ error: 'Failed to create reminder', message: error.message });
@@ -33,11 +34,14 @@ export const createReminder = async (req, res) => {
 export const updateReminder = async (req, res) => {
   try {
     const { id } = req.params;
-    const reminder = await HygieneReminder.findByIdAndUpdate(
-      id,
-      req.body,
-      { new: true, runValidators: true }
-    );
+    const updates = {
+      title: req.body.title,
+      frequency: req.body.interval || req.body.frequency,
+      is_active: req.body.enabled,
+      description: req.body.description
+    };
+    
+    const reminder = await HygieneReminderModel.updateHygieneReminder(id, updates);
 
     if (!reminder) {
       return res.status(404).json({ error: 'Reminder not found' });
@@ -53,9 +57,9 @@ export const updateReminder = async (req, res) => {
 export const deleteReminder = async (req, res) => {
   try {
     const { id } = req.params;
-    const reminder = await HygieneReminder.findByIdAndDelete(id);
+    const deleted = await HygieneReminderModel.deleteHygieneReminder(id);
 
-    if (!reminder) {
+    if (!deleted) {
       return res.status(404).json({ error: 'Reminder not found' });
     }
 
