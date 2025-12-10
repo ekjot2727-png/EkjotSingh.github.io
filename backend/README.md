@@ -9,12 +9,12 @@ Backend API for the Luna Menstrual Health & Cycle Tracker application.
 - AI chatbot for menstrual health questions
 - Gynecologist directory (focused on Jaipur)
 - Hygiene reminders
-- MongoDB database integration
+- **Supabase PostgreSQL** database integration (formerly MongoDB)
 
 ## Prerequisites
 
 - Node.js (v18 or higher)
-- MongoDB (local installation or MongoDB Atlas)
+- Supabase account (free at https://supabase.com)
 
 ## Installation
 
@@ -27,6 +27,14 @@ cd backend
 ```bash
 npm install
 ```
+
+3. Create `.env` file with Supabase credentials:
+```
+SUPABASE_URL=your_url_here
+SUPABASE_KEY=your_key_here
+```
+
+See `SUPABASE_SETUP.md` in root directory for complete database setup.
 
 3. Create a `.env` file (copy from `.env.example`):
 ```bash
