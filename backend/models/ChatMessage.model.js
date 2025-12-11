@@ -1,29 +1,37 @@
-import mongoose from 'mongoose';
+// Compatibility wrapper for legacy `ChatMessage.model.js`.
+import * as ChatModel from '../models/supabase/ChatMessage.js';
 
-const chatMessageSchema = new mongoose.Schema({
-  userId: {
-    type: String,
-    required: true,
-    default: 'default-user'
+const toLegacy = (m) => {
+  if (!m) return null;
+  return {
+    _id: m.id || null,
+    userId: m.user_id || m.userId,
+    role: m.role,
+    content: m.content,
+    timestamp: m.created_at || m.timestamp
+  };
+};
+
+const ChatMessage = {
+  async find(query) {
+    const userId = query?.userId || query?.user_id || 'default-user';
+    const msgs = await ChatModel.getChatHistory(userId);
+    return msgs.map(toLegacy);
   },
-  role: {
-    type: String,
-    enum: ['user', 'assistant'],
-    required: true
+  async create(data) {
+    const rec = {
+      user_id: data.userId || data.user_id || 'default-user',
+      role: data.role,
+      content: data.content
+    };
+    const m = await ChatModel.createChatMessage(rec);
+    return toLegacy(m);
   },
-  content: {
-    type: String,
-    required: true
-  },
-  timestamp: {
-    type: Date,
-    default: Date.now
+  async deleteMany(query) {
+    const userId = query?.userId || query?.user_id || 'default-user';
+    await ChatModel.deleteChatHistory(userId);
+    return { deletedCount: 1 };
   }
-}, {
-  timestamps: true
-});
+};
 
-// Index for faster queries
-chatMessageSchema.index({ userId: 1, timestamp: -1 });
-
-export default mongoose.model('ChatMessage', chatMessageSchema);
+export default ChatMessage;
